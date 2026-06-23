@@ -1,0 +1,66 @@
+workflows:
+  ios-release:
+    name: Exceed Support — iOS App Store
+    max_build_duration: 90
+    instance_type: mac_mini_m2
+
+    environment:
+      node: 20.0.0
+      xcode: latest
+      cocoapods: default
+      vars:
+        BUNDLE_ID: "com.exceedsupportservices.portal"
+        APP_NAME: "Exceed Support"
+      groups:
+        - supabase_keys     # REACT_APP_SUPABASE_URL, REACT_APP_SUPABASE_ANON_KEY
+        - app_store_connect # APP_STORE_CONNECT_KEY_IDENTIFIER, APP_STORE_CONNECT_ISSUER_ID, APP_STORE_CONNECT_PRIVATE_KEY
+        - certificate_credentials # CERTIFICATE_PRIVATE_KEY, PROVISIONING_PROFILE
+
+    scripts:
+      - name: Install npm dependencies
+        script: npm install
+
+      - name: Build React web app
+        script: npm run build
+
+      - name: Initialise Capacitor iOS project
+        script: |
+          if [ ! -d "ios" ]; then
+            npx cap init "$APP_NAME" "$BUNDLE_ID" --web-dir=build
+            npx cap add ios
+          else
+            npx cap sync ios
+          fi
+
+      - name: Install CocoaPods
+        script: |
+          cd ios/App
+          pod install --repo-update
+
+      - name: Set up code signing
+        script: |
+          keychain initialize
+          app-store-connect fetch-signing-files \
+            "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
+          keychain add-certificates
+          xcode-project use-profiles
+
+      - name: Build and archive
+        script: |
+          xcode-project build-ipa \
+            --workspace ios/App/App.xcworkspace \
+            --scheme App \
+            --config Release
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        submit_to_app_store: false   # Set to true when ready for full release

@@ -1,0 +1,13 @@
+{
+  "appId": "com.exceedsupportservices.portal",
+  "appName": "Exceed Support",
+  "webDir": "build",
+  "server": {
+    "androidScheme": "https"
+  },
+  "ios": {
+    "contentInset": "automatic",
+    "preferredContentMode": "mobile",
+    "backgroundColor": "#F0F4F8"
+  }
+}
